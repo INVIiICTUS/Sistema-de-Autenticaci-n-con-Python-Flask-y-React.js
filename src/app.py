@@ -8,10 +8,6 @@ from flask_swagger import swagger
 from flask_cors import CORS
 from api.utils import APIException, generate_sitemap
 from api.models import db, User
-from api.routes import api
-from api.admin import setup_admin
-
-from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
 
 from api.models import User
 #from models import Person
@@ -34,14 +30,6 @@ db.init_app(app)
 
 # Allow CORS requests to this API
 CORS(app)
-
-# add the admin
-setup_admin(app)
-
-# Add all endpoints form the API with a "api" prefix
-app.register_blueprint(api, url_prefix='/api')
-
-
 
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
