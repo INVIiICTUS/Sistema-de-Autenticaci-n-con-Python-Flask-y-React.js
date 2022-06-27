@@ -7,11 +7,13 @@ from flask_migrate import Migrate
 from flask_swagger import swagger
 from flask_cors import CORS
 from api.utils import APIException, generate_sitemap
-from api.models import db
+from api.models import db, User
 from api.routes import api
 from api.admin import setup_admin
-from api.commands import setup_commands
 
+from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
+
+from api.models import User
 #from models import Person
 
 ENV = os.getenv("FLASK_ENV")
@@ -27,7 +29,7 @@ else:
     app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////tmp/test.db"
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-MIGRATE = Migrate(app, db, compare_type = True)
+MIGRATE = Migrate(app, db)
 db.init_app(app)
 
 # Allow CORS requests to this API
@@ -36,11 +38,10 @@ CORS(app)
 # add the admin
 setup_admin(app)
 
-# add the admin
-setup_commands(app)
-
 # Add all endpoints form the API with a "api" prefix
 app.register_blueprint(api, url_prefix='/api')
+
+
 
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
@@ -63,6 +64,81 @@ def serve_any_other_file(path):
     response.cache_control.max_age = 0 # avoid cache memory
     return response
 
+##### USERS #####
+# All users
+@app.route('/user', methods=['GET', 'POST'])
+def handle_users():
+    """
+    All Users
+    """
+    # GET all users
+    if request.method == 'GET':
+        users = User.query.all()
+        all_users = list(map(lambda x: x.serialize(), users))
+        return jsonify(all_users), 200
+
+    # Create (POST) a new user
+    if request.method == 'POST':
+        user_to_add = request.json
+
+        # Data validation
+        if user_to_add is None:
+            raise APIException("You need to specify the request body as a json object", status_code=400)
+        if 'user_name' not in user_to_add:
+            raise APIException('You need to specify the username', status_code=400)
+        if 'email' not in user_to_add:
+            raise APIException('You need to specify the email', status_code=400)
+        if 'password' not in user_to_add:
+            raise APIException('You need to create a valid password', status_code=400)
+
+        new_user = User(user_name=user_to_add["user_name"], email=user_to_add["email"], password=user_to_add["password"])
+        db.session.add(new_user)
+        db.session.commit()
+        return jsonify(new_user.serialize()), 200
+
+    return "Invalid Method", 404
+
+# Get, Edit or delete a specific user
+@app.route('/user/<int:user_id>', methods=['PUT', 'GET', 'DELETE'])
+def handle_single_user(user_id):
+    """
+    Single user
+    """
+    user = User.query.get(user_id)
+
+    # Data validation
+    if user is None:
+        raise APIException('User not found in data base', status_code=404)
+        
+    # Modify (PUT) a user
+    if request.method == 'PUT':
+        request_body = request.json
+
+        if "user_name" in request_body:
+            user.user_name = request_body["user_name"]
+        if "email" in request_body:
+            user.email = request_body["email"]
+        if "password" in request_body:
+            user.password = request_body["password"]
+        if "is_active" in request_body:
+            user.is_active = request_body["is_active"]
+
+        db.session.commit()
+        return jsonify(user.serialize()), 200
+
+    # GET a user
+    elif request.method == 'GET':
+        return jsonify(user.serialize()), 200
+    
+    # DELETE a user
+    elif request.method == 'DELETE':
+        # user_planet_list = Fav_planet.query.filter_by(user_id=user_id).first()
+        # db.session.delete(user_planet_list)
+        db.session.delete(user)
+        db.session.commit()
+        return "User deleted", 200
+
+    return "Invalid Method", 404
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':

@@ -1,26 +1,31 @@
 import React, { useContext } from "react";
 import { Context } from "../store/appContext";
-import rigoImageUrl from "../../img/rigo-baby.jpg";
-import "../../styles/home.css";
+import { Login_form } from "../component/login-form";
+import { Redirect } from "react-router-dom";
 
 export const Home = () => {
-	const { store, actions } = useContext(Context);
+  const { store, actions } = useContext(Context);
 
-	return (
-		<div className="text-center mt-5">
-			<h1>Hello Rigo!!</h1>
-			<p>
-				<img src={rigoImageUrl} />
-			</p>
-			<div className="alert alert-info">
-				{store.message || "Loading message from the backend (make sure your python backend is running)..."}
-			</div>
-			<p>
-				This boilerplate comes with lots of documentation:{" "}
-				<a href="https://github.com/4GeeksAcademy/react-flask-hello/tree/95e0540bd1422249c3004f149825285118594325/docs">
-					Read documentation
-				</a>
-			</p>
-		</div>
-	);
+  return (
+    <div className="mx-auto text-center mt-5">
+      <h1 className="text-primary">Welcome to Our Web !</h1>
+
+      {store.token ? (
+        <Redirect to={"/dashboard"} />
+      ) : (
+        <div>
+          <Login_form />
+          {store.message == "Invalid email or Password !" ? (
+            <div className="alert alert-danger mt-3 col-5 mx-auto" role="alert">
+              {store.message}
+            </div>
+          ) : (
+            <div className="alert alert-info mt-3 col-5 mx-auto" role="alert">
+              {store.message}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 };
